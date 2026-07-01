@@ -1,0 +1,8 @@
+{
+  "name": "tgr-ga4-api",
+  "version": "1.0.0",
+  "description": "GA4 Data API proxy for The Giant Reach",
+  "dependencies": {
+    "@google-analytics/data": "^4.8.0"
+  }
+}
