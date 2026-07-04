@@ -15,7 +15,14 @@ module.exports = async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const { propertyId, serviceAccountJson, dateRange = '30daysAgo' } = req.body;
+  const { propertyId, serviceAccountJson, dateRange } = req.body;
+
+  // Sanitize dateRange — must be NdaysAgo, yesterday, today, or YYYY-MM-DD
+  const sanitizedRange = !dateRange
+    ? '30daysAgo'
+    : dateRange.includes('daysAgo') || dateRange === 'yesterday' || dateRange === 'today' || /^\d{4}-\d{2}-\d{2}$/.test(dateRange)
+      ? dateRange
+      : `${dateRange}daysAgo`;
 
   if (!propertyId || !serviceAccountJson) {
     return res.status(400).json({ error: 'Missing propertyId or serviceAccountJson' });
@@ -46,7 +53,7 @@ module.exports = async function handler(req, res) {
       // Overview metrics
       analyticsClient.runReport({
         property,
-        dateRanges: [{ startDate: dateRange, endDate: 'today' }],
+        dateRanges: [{ startDate: sanitizedRange, endDate: 'today' }],
         metrics: [
           { name: 'activeUsers' },
           { name: 'sessions' },
@@ -59,7 +66,7 @@ module.exports = async function handler(req, res) {
       // Top pages
       analyticsClient.runReport({
         property,
-        dateRanges: [{ startDate: dateRange, endDate: 'today' }],
+        dateRanges: [{ startDate: sanitizedRange, endDate: 'today' }],
         dimensions: [{ name: 'pagePath' }],
         metrics: [{ name: 'screenPageViews' }, { name: 'activeUsers' }],
         orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
@@ -69,7 +76,7 @@ module.exports = async function handler(req, res) {
       // Traffic sources
       analyticsClient.runReport({
         property,
-        dateRanges: [{ startDate: dateRange, endDate: 'today' }],
+        dateRanges: [{ startDate: sanitizedRange, endDate: 'today' }],
         dimensions: [{ name: 'sessionDefaultChannelGroup' }],
         metrics: [{ name: 'sessions' }],
         orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
@@ -78,7 +85,7 @@ module.exports = async function handler(req, res) {
       // Daily sessions (for chart)
       analyticsClient.runReport({
         property,
-        dateRanges: [{ startDate: dateRange, endDate: 'today' }],
+        dateRanges: [{ startDate: sanitizedRange, endDate: 'today' }],
         dimensions: [{ name: 'date' }],
         metrics: [{ name: 'sessions' }, { name: 'activeUsers' }],
         orderBys: [{ dimension: { dimensionName: 'date' } }],
