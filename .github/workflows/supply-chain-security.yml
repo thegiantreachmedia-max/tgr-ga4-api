@@ -24,7 +24,7 @@ jobs:
         with:
           node-version: 22
 
-      - name: Generate or refresh npm lockfile
+      - name: Generate lockfile and apply non-breaking npm audit fixes
         id: lock
         shell: bash
         run: |
@@ -34,11 +34,12 @@ jobs:
             exit 0
           fi
           npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-          if ! git ls-files --error-unmatch package-lock.json >/dev/null 2>&1 || ! git diff --quiet -- package-lock.json; then
+          npm audit fix --ignore-scripts --no-fund || true
+          git add package.json package-lock.json
+          if ! git diff --cached --quiet; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package-lock.json
-            git commit -m "Add or refresh npm lockfile"
+            git commit -m "Add lockfile and apply safe dependency fixes"
             git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
           test -s package-lock.json
@@ -67,6 +68,9 @@ jobs:
             high: counts.high || 0,
             critical: counts.critical || 0
           }));
+          const fs = require("node:fs");
+          const highCritical = (counts.high || 0) + (counts.critical || 0);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `high_critical=${highCritical}\\n`);
           for (const [name, item] of Object.entries(data.vulnerabilities || {})) {
             console.log(JSON.stringify({
               package: name,
@@ -80,17 +84,13 @@ jobs:
           echo "audit_exit=$audit_exit" >> "$GITHUB_OUTPUT"
           exit 0
 
-      - name: Scan full Git history with Gitleaks
-        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_VERSION: "8.24.3"
-          GITLEAKS_ENABLE_COMMENTS: "false"
-          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
-          GITLEAKS_ENABLE_SUMMARY: "true"
+      - name: Scan full Git history with Gitleaks (redacted)
+        run: |
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks@sha256:e1b35e12a8c6fa8901f060459cfb6b2fc4c484d3afbe3b029733a3bbfab07055 detect \
+            --source=/repo --redact --verbose --exit-code=1
 
       - name: Fail if npm audit found high or critical issues
-        if: steps.npm_audit.outputs.audit_exit != '' && steps.npm_audit.outputs.audit_exit != '0'
+        if: steps.npm_audit.outputs.high_critical != '' && steps.npm_audit.outputs.high_critical != '0'
         run: |
           echo "npm audit reported vulnerabilities. Review the package/severity summary above."
           exit 1
