@@ -1,0 +1,96 @@
+name: Supply-chain and secret-history audit
+
+on:
+  push:
+    branches:
+      - security/prelaunch-audit-2026-11-07
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full Git history
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+
+      - name: Generate or refresh npm lockfile
+        id: lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f package.json ]; then
+            echo "No root package.json; no npm lockfile required."
+            exit 0
+          fi
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          if ! git diff --quiet -- package-lock.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package-lock.json
+            git commit -m "Add or refresh npm lockfile"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
+          test -s package-lock.json
+          echo "lockfile=present" >> "$GITHUB_OUTPUT"
+
+      - name: Install exactly from lockfile
+        if: hashFiles('package-lock.json') != ''
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run npm audit
+        id: npm_audit
+        if: hashFiles('package-lock.json') != ''
+        shell: bash
+        run: |
+          set +e
+          npm audit --json > "$RUNNER_TEMP/npm-audit.json"
+          audit_exit=$?
+          node --input-type=commonjs - "$RUNNER_TEMP/npm-audit.json" <<'NODE'
+          const fs = require("node:fs");
+          const data = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          const counts = data.metadata?.vulnerabilities || {};
+          console.log("npm audit summary:", JSON.stringify({
+            info: counts.info || 0,
+            low: counts.low || 0,
+            moderate: counts.moderate || 0,
+            high: counts.high || 0,
+            critical: counts.critical || 0
+          }));
+          for (const [name, item] of Object.entries(data.vulnerabilities || {})) {
+            console.log(JSON.stringify({
+              package: name,
+              severity: item.severity,
+              direct: item.isDirect,
+              range: item.range,
+              fixAvailable: item.fixAvailable
+            }));
+          }
+          NODE
+          echo "audit_exit=$audit_exit" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Scan full Git history with Gitleaks
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_VERSION: "8.24.3"
+          GITLEAKS_ENABLE_COMMENTS: "false"
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+          GITLEAKS_ENABLE_SUMMARY: "true"
+
+      - name: Fail if npm audit found high or critical issues
+        if: steps.npm_audit.outputs.audit_exit != '' && steps.npm_audit.outputs.audit_exit != '0'
+        run: |
+          echo "npm audit reported vulnerabilities. Review the package/severity summary above."
+          exit 1
