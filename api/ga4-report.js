@@ -1,8 +1,14 @@
 const { BetaAnalyticsDataClient } = require('@google-analytics/data');
 
 module.exports = async function handler(req, res) {
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // Restrict browser origins; server-to-server calls may omit Origin.
+  const allowedOrigins = new Set(['https://app.thegiantreach.com', 'https://thegiantreach.com', 'https://www.thegiantreach.com']);
+  const origin = req.headers.origin;
+  if (origin && !allowedOrigins.has(origin)) return res.status(403).json({ error: 'Origin not allowed' });
+  res.setHeader('Access-Control-Allow-Origin', origin || 'https://app.thegiantreach.com');
+  res.setHeader('Vary', 'Origin');
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
 
