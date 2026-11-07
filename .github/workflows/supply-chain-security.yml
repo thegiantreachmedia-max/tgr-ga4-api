@@ -68,9 +68,8 @@ jobs:
             high: counts.high || 0,
             critical: counts.critical || 0
           }));
-          const fs = require("node:fs");
           const highCritical = (counts.high || 0) + (counts.critical || 0);
-          fs.appendFileSync(process.env.GITHUB_OUTPUT, `high_critical=${highCritical}\\n`);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `high_critical=${highCritical}\n`);
           for (const [name, item] of Object.entries(data.vulnerabilities || {})) {
             console.log(JSON.stringify({
               package: name,
@@ -83,6 +82,9 @@ jobs:
           NODE
           echo "audit_exit=$audit_exit" >> "$GITHUB_OUTPUT"
           exit 0
+
+      - name: Build app after dependency updates
+        run: npm run build --if-present
 
       - name: Scan full Git history with Gitleaks (redacted)
         run: |
