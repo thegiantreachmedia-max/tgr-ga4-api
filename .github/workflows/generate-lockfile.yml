@@ -21,10 +21,13 @@ jobs:
       - name: Generate lockfile without running package scripts
         run: |
           npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-          test -f package-lock.json
+          test -s package-lock.json
+          ls -l package-lock.json
+          git check-ignore -v package-lock.json || true
       - name: Commit lockfile
         run: |
-          git add package-lock.json
+          git add -f package-lock.json
+          git status --short
           if git diff --cached --quiet; then
             echo "Lockfile is already tracked and current."
             exit 0
