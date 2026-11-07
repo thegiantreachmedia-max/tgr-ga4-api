@@ -41,6 +41,7 @@ jobs:
         if: hashFiles('package.json') != ''
         run: npm audit --audit-level=high
       - name: Scan full Git history with Gitleaks
+        if: always()
         env:
           GITLEAKS_VERSION: v8.24.3
         run: |
