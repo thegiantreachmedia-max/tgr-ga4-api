@@ -44,3 +44,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_COMMENTS: "false"
+      - name: Scan all reachable Git history
+        run: |
+          gitleaks git --redact --exit-code 2 --report-format sarif --report-path "$RUNNER_TEMP/gitleaks-full-history.sarif" --log-opts="--all"
