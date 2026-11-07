@@ -26,6 +26,7 @@ jobs:
           npm install --package-lock-only --ignore-scripts --no-audit --no-fund
           npm audit --json > "$RUNNER_TEMP/npm-audit-root.json" || true
           node -e 'const fs=require("fs"); const p=process.env.AUDIT_FILE; const a=JSON.parse(fs.readFileSync(p,"utf8")); console.log(JSON.stringify(a.metadata?.vulnerabilities ?? {}, null, 2));' 
+          node -e 'const fs=require("fs"); const a=JSON.parse(fs.readFileSync(process.env.AUDIT_FILE,"utf8")); for (const [name,v] of Object.entries(a.vulnerabilities||{})) console.log(JSON.stringify({package:name,severity:v.severity,range:v.range,fixAvailable:v.fixAvailable,via:(v.via||[]).map(x=>typeof x==="string"?x:{name:x.name,title:x.title,range:x.range,url:x.url})}));'
         env:
           AUDIT_FILE: ${{ runner.temp }}/npm-audit-root.json
       - name: Commit lockfiles
