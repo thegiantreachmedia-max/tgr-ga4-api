@@ -1,37 +1,46 @@
 # TGR GA4 API
 
-A lightweight server-side proxy for retrieving Google Analytics 4 reports for The Giant Reach applications.
+**A server-side Google Analytics 4 reporting API for The Giant Reach applications.**
 
-> **Repository purpose:** Internal integration utility. This repository documents the API component; it is not a standalone analytics product.
+TGR GA4 API is a lightweight integration service that retrieves website analytics from Google Analytics 4 and makes the results available through a protected HTTP endpoint. It was created as an internal utility to connect analytics data with The Giant Reach applications and dashboards.
+
+[The Giant Reach](https://www.thegiantreach.com) · [GitHub](https://github.com/thegiantreachmedia-max)
+
+---
 
 ## What it does
 
-The service connects to the Google Analytics Data API and returns a structured report containing:
+The API retrieves and organises key GA4 reporting data, including:
 
-- Active users, sessions and page views
-- Bounce rate and average session duration
-- Top pages
-- Traffic sources
-- Daily session data
+- **Traffic overview** — active users, sessions and page views.
+- **Engagement metrics** — bounce rate and average session duration.
+- **Top pages** — pages receiving the most views.
+- **Traffic sources** — channels and sources bringing visitors to the website.
+- **Daily sessions** — session activity over the selected reporting period.
 
-The project uses the Google Analytics Data client and Google authentication libraries.
+## How it works
 
-## API endpoint
+1. A trusted server-side application sends a request to the API.
+2. The request includes the GA4 property ID, service-account credentials and requested date range.
+3. The API authenticates with Google Analytics Data API.
+4. The service returns a structured JSON response containing the requested metrics.
 
-After deploying the project to Vercel, the report endpoint is:
+## API
 
-```text
+**Endpoint**
+
+```http
 POST /api/ga4-report
 ```
 
-### Request headers
+**Headers**
 
 ```http
 Content-Type: application/json
 x-api-key: YOUR_GA4_SECRET_KEY
 ```
 
-### Request body
+**Request body**
 
 ```json
 {
@@ -43,49 +52,51 @@ x-api-key: YOUR_GA4_SECRET_KEY
 }
 ```
 
-Supported date ranges documented for this integration:
+Supported date ranges:
 
 - `7daysAgo`
 - `30daysAgo`
 - `90daysAgo`
 
-### Response
-
-A successful response includes a `success` flag, fetch timestamp and a `data` object containing the report metrics and breakdowns.
-
-## Deployment configuration
-
-The original deployment setup uses Vercel.
-
-Configure the following environment variable in the Vercel project:
-
-| Variable | Purpose |
-| --- | --- |
-| `GA4_SECRET_KEY` | Shared secret used to authenticate requests to the API |
-
-Install dependencies and deploy the repository through the connected Vercel project.
-
-## Security
-
-- Keep `GA4_SECRET_KEY` private and use a strong, unique value.
-- Never commit Google service-account credentials, private keys or production secrets.
-- Do not expose this endpoint's API key or service-account credentials in browser-side code.
-- Treat this as a server-to-server integration. Restrict access and store credentials in secure server-side configuration.
-- Rotate credentials immediately if they are exposed.
+A successful response contains a `success` status, a `fetchedAt` timestamp and a `data` object with the analytics report.
 
 ## Technology
 
 - Node.js
-- Vercel serverless API
+- Vercel serverless functions
 - Google Analytics Data API
 - `@google-analytics/data`
 - `google-auth-library`
 
-## Maintained by
+## Deployment and configuration
 
-**The Giant Reach**  
-[thegiantreach.com](https://www.thegiantreach.com) · [GitHub](https://github.com/thegiantreachmedia-max)
+The service is designed for deployment on Vercel.
+
+1. Import the repository into a Vercel project.
+2. Add the `GA4_SECRET_KEY` environment variable with a strong, private secret.
+3. Configure the Google service-account credentials securely on the server side.
+4. Ensure the service account has access to the intended GA4 property.
+5. Deploy the project and call the `/api/ga4-report` endpoint from a trusted backend.
+
+## Security
+
+- Never commit service-account JSON, private keys, API secrets or environment files.
+- Keep the API key and Google credentials on the server; never expose them in frontend code.
+- Restrict access to trusted server-side callers.
+- Rotate any credential that may have been exposed.
+
+## Project purpose
+
+TGR GA4 API is an internal integration component maintained by **[The Giant Reach](https://www.thegiantreach.com)**. It supports analytics access for connected applications; it is not presented as a standalone analytics product.
+
+## About The Giant Reach
+
+The Giant Reach builds client acquisition and workflow systems for businesses, with a focus on practical software that improves how teams operate.
+
+- **Website:** https://www.thegiantreach.com
+- **Portfolio:** https://www.thegiantreach.com/portfolio
+- **Contact:** [opeyemi@thegiantreach.com](mailto:opeyemi@thegiantreach.com)
 
 ---
 
-This repository is maintained as an internal integration component. Production credentials and private application code should remain outside this public repository.
+*Internal integration utility by The Giant Reach.*
